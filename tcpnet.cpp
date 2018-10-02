@@ -29,27 +29,12 @@ void TCPNet::SendData(QTcpSocket *socket,const DATA_PACKAGE & pack)
     socket->write((char *)&pack,sizeof (pack));
 }
 
-void TCPNet::Broadcast(const DATA_PACKAGE &pack)
-{
-    for(auto i=user_map.begin();i!=user_map.end();i++)
-    {
-        i.key()->write((char *)&pack,sizeof (pack));
-    }
-}
+
 
 void TCPNet::newConnection()
 {
     socket=server->nextPendingConnection();
-    if(!user_map.count(socket))
-    {
-        PRINT("新的连接...")
-        CLIENT_INFO info;
-        info.ip=socket->peerAddress().toString().toStdString();
-        info.port=socket->peerPort();
-        user_map[socket]=(info);
-        PRINT(info.ip<<"::"<<info.port)
-    }
-    DATA_PACKAGE pack;
+    data->NewConnection(socket);
     connect(socket,&QTcpSocket::readyRead,this,&TCPNet::readMessage);
 }
 

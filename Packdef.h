@@ -28,6 +28,9 @@ enum class MS_TYPE :unsigned char
     ENTER_ROOM,
     LEAVE_ROOM,
     UPDATE_ROOM,
+    ADD_PLAYER,
+    GAME_START,
+    GET_POKER,
     HEARTBEAT,//心跳包
 };
 using std::string;
@@ -57,13 +60,51 @@ struct USER_BUF
     {
         str.copy(buf, str.size(), 0);
     }
-    wstring GetStr()
+    wstring GetStr() const
     {
         wstring str=wstring(buf);
         return str;
     }
 };
 
+enum class CardType : unsigned char
+{
+    Heart		,
+    Spade		,
+    Diamond		,
+    Club		,
+    Joker	    ,
+};
+enum class PokerPoints : unsigned char
+{
+    Three=3,Four,Five,Six,Seven,Eight,Nine,Ten,jack,Queen,King,Ace,Two,Black_Joker,Red_Joker
+};
+struct Poker
+{
+    CardType c_type;
+    PokerPoints point;
+    Poker(){}
+    Poker(CardType t,PokerPoints p)
+    {
+        c_type=t;
+        point=p;
+    }
+    void operator=(const Poker & u )
+    {
+        c_type=u.c_type;point=u.point;
+    }
+};
+
+struct PokerGroup
+{
+    char poker[3][16]; // 16 张/person
+    char last[3];      // 地主牌
+    char num;
+    char & operator[](char i)
+    {
+        return *(poker[0]+i);
+    }
+};
 
 struct USER_INFO
 {
@@ -78,10 +119,14 @@ struct USER_INFO
     {
         name=n;password=p;
     }
+    void operator=(const USER_INFO & u )
+    {
+        name=u.name;password=u.password;
+    }
 };
 struct CLIENT_INFO
 {
-    USER_INFO user;
+    wstring username;
     string ip;
     unsigned short port;
 };
@@ -91,23 +136,36 @@ struct ROOM_LIST_INFO
     USER_BUF master,name;
     unsigned char num;
 };
-
+class QTcpSocket;
 struct ROOM_INFO
 {
-    USER_BUF mate[3],name;
+    wstring mate_arr[3],name;
     unsigned char num;
-    bool AddPlayer(const ROOM_LIST_INFO & info)
+    QTcpSocket * socket_arr[3];
+    ROOM_INFO()
     {
         for(int i=0;i<3;i++)
         {
-            if(mate[i].GetStr().empty())
+            socket_arr[i]=nullptr;
+        }
+    }
+    bool AddPlayer( QTcpSocket * _socket,const ROOM_LIST_INFO & info)
+    {
+        for(int i=0;i<3;i++)
+        {
+            if(socket_arr[i]==nullptr)
             {
                 if(i==0)
                 {
-                    name=info.name;
+                    name=info.name.GetStr();
                     num=1;
                 }
-                mate[i]=info.master;
+                else
+                {
+                    num++;
+                }
+                mate_arr[i]=info.master.GetStr();
+                socket_arr[i]=_socket;
                 return true;
             }
         }
