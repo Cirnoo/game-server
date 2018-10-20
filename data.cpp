@@ -33,6 +33,10 @@ bool Data::DealMS(QTcpSocket * _socket,DATA_PACKAGE pack)
     {
         return true;
     }
+    case MS_TYPE::ADD_ROOM:
+    {
+        return 
+    }
     default:
     {
         DATA_PACKAGE pack;

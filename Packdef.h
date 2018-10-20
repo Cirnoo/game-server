@@ -22,6 +22,8 @@ enum class MS_TYPE :unsigned char
     LOGIN_RQ,
     LOGIN_RE_T,
     LOGIN_RE_F,
+    ADD_ROOM,
+    GET_ROOM_LIST,
     HEARTBEAT,//ÐÄÌø°ü
 };
 using std::string;
@@ -84,4 +86,10 @@ struct DATA_PACKAGE
         user.name=name;
         user.password=password;
     }
+};
+
+struct ROOM_INFO
+{
+	USER_BUF master,name;
+	int num;
 };

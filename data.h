@@ -1,11 +1,11 @@
 #ifndef DATA_H
 #define DATA_H
-#include "Packdef.h"
 #include <QtSql>
 #include <QVector>
 #include <functional>
+#include <QList>
 #include "tcpnet.h"
-
+#include "Packdef.h"
 class Data
 {
 public:
@@ -21,9 +21,10 @@ private:
     bool Login(QString name, QString password);
     bool ChangePassword(QString name, QString password);
     bool Register(QString name, QString password);
+    bool AddRoom(wstring );
     TCPNet tcp;
     QTcpSocket * socket;
-
+    QList<ROOM_INFO> room_list;
 };
 
 #endif // DATA_H
