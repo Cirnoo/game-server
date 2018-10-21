@@ -29,6 +29,14 @@ void TCPNet::SendData(QTcpSocket *socket,const DATA_PACKAGE & pack)
     socket->write((char *)&pack,sizeof (pack));
 }
 
+void TCPNet::Broadcast(const DATA_PACKAGE &pack)
+{
+    for(auto i=user_map.begin();i!=user_map.end();i++)
+    {
+        i.key()->write((char *)&pack,sizeof (pack));
+    }
+}
+
 void TCPNet::newConnection()
 {
     socket=server->nextPendingConnection();

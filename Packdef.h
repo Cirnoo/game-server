@@ -25,6 +25,9 @@ enum class MS_TYPE :unsigned char
     ADD_ROOM,
     GET_ROOM_LIST,
     CREATE_ROOM,
+    ENTER_ROOM,
+    LEAVE_ROOM,
+    UPDATE_ROOM,
     HEARTBEAT,//ÐÄÌø°ü
 };
 using std::string;
@@ -83,13 +86,35 @@ struct CLIENT_INFO
     unsigned short port;
 };
 
-struct ROOM_INFO
+struct ROOM_LIST_INFO
 {
     USER_BUF master,name;
     unsigned char num;
 };
 
-const unsigned int MAX_BUF_SIZE=sizeof(ROOM_INFO);
+struct ROOM_INFO
+{
+    USER_BUF mate[3],name;
+    unsigned char num;
+    bool AddPlayer(const ROOM_LIST_INFO & info)
+    {
+        for(int i=0;i<3;i++)
+        {
+            if(mate[i].GetStr().empty())
+            {
+                if(i==0)
+                {
+                    name=info.name;
+                    num=1;
+                }
+                mate[i]=info.master;
+                return true;
+            }
+        }
+        return false;
+    }
+};
+const unsigned int MAX_BUF_SIZE=sizeof(ROOM_LIST_INFO);
 struct DATA_BUF
 {
     char buf[MAX_BUF_SIZE];

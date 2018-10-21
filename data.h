@@ -3,6 +3,8 @@
 #include <QVector>
 #include <functional>
 #include <QList>
+#include <string>
+#include <unordered_map>
 #include "tcpnet.h"
 #include "Packdef.h"
 #include "mysql.h"
@@ -11,7 +13,7 @@ class Data
 public:
     Data();
     //bool DealMS(MS_TYPE _type,USER_INFO data);
-    bool DealMS(QTcpSocket *m_socket, DATA_PACKAGE pack);
+    bool DealMS(QTcpSocket *m_socket, const DATA_PACKAGE &pack);
     unsigned char GetBufSize(MS_TYPE type);
 private:
     MySQL sql;
@@ -22,11 +24,14 @@ private:
     bool Register(QTcpSocket *socket,DATA_PACKAGE pack);
     bool AddRoom(wstring );
     bool SendRoomList(QTcpSocket *socket);
-    bool CreatRoom(DATA_PACKAGE pack);
-    //USER_INFO RecvUserInfo(QTcpSocket *socket);
+    bool CreatRoom(QTcpSocket *socket,DATA_PACKAGE pack);
+    bool LeaveRoom(QTcpSocket *socket,DATA_PACKAGE pack);
+    bool EnterRoom(QTcpSocket *socket,DATA_PACKAGE pack);
+    void UpdateRoom();
     TCPNet tcp;
     QTcpSocket * m_socket;
-    QList<ROOM_INFO> room_list;
+    //QList<ROOM_LIST_INFO> room_list;
+    std::unordered_map<wstring,ROOM_INFO> room_map;
 };
 
 #endif // DATA_H
