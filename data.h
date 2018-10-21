@@ -1,29 +1,31 @@
 #ifndef DATA_H
 #define DATA_H
-#include <QtSql>
 #include <QVector>
 #include <functional>
 #include <QList>
 #include "tcpnet.h"
 #include "Packdef.h"
+#include "mysql.h"
 class Data
 {
 public:
-    Data(QSqlQuery _query);
+    Data();
     //bool DealMS(MS_TYPE _type,USER_INFO data);
-    bool DealMS(QTcpSocket *socket, DATA_PACKAGE pack);
-    void SendMS(QTcpSocket *socket, DATA_PACKAGE pack);
-
+    bool DealMS(QTcpSocket *m_socket, DATA_PACKAGE pack);
+    unsigned char GetBufSize(MS_TYPE type);
 private:
-    QSqlQuery  query;
+    MySQL sql;
     void AddMS(MS_TYPE _type,std::function<bool (USER_INFO)> _cmd);
     void SocketInit();
-    bool Login(QString name, QString password);
-    bool ChangePassword(QString name, QString password);
-    bool Register(QString name, QString password);
+    bool Login(QTcpSocket * socket, DATA_PACKAGE pack);
+    bool ChangePassword(QTcpSocket * socket);
+    bool Register(QTcpSocket *socket,DATA_PACKAGE pack);
     bool AddRoom(wstring );
+    bool SendRoomList(QTcpSocket *socket);
+    bool CreatRoom(DATA_PACKAGE pack);
+    //USER_INFO RecvUserInfo(QTcpSocket *socket);
     TCPNet tcp;
-    QTcpSocket * socket;
+    QTcpSocket * m_socket;
     QList<ROOM_INFO> room_list;
 };
 

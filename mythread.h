@@ -9,9 +9,8 @@ class MyThread:public QThread
 public:
     MyThread();
     void Reply(QTcpSocket *socket,const DATA_PACKAGE & pack);
-    void test();
 signals:
-    void tests();
+    void ReplySignal(QTcpSocket *socket,const DATA_PACKAGE & pack);
 };
 
 #endif // MYTHREAD_H

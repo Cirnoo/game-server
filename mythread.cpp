@@ -4,6 +4,7 @@
 MyThread::MyThread()
 {
     qRegisterMetaType<DATA_PACKAGE>("DATA_PACKAGE");
+
 }
 
 void MyThread::Reply(QTcpSocket * socket, const DATA_PACKAGE &pack)
@@ -11,7 +12,3 @@ void MyThread::Reply(QTcpSocket * socket, const DATA_PACKAGE &pack)
     socket->write((char *)&pack,sizeof (pack));
 }
 
-void MyThread::test()
-{
-    PRINT("test");
-}

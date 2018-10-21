@@ -13,10 +13,8 @@ class TCPNet:public QObject
 public:
     TCPNet( Data * d);
     ~TCPNet();
-    void SendMessage(QTcpSocket *socket, const DATA_PACKAGE &pack);
-signals:
-    void ReplySignal(QTcpSocket *socket,const DATA_PACKAGE & pack);
-    void test();
+    void SendData(QTcpSocket *socket, const DATA_PACKAGE &pack);
+
 private :
     void newConnection();
 private:

@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <iostream>
-
+#include <QString>
 #define PRINT(a) std::cout<<a<<"\n";
 
 #define _DEF_PORT 1234
@@ -24,6 +24,7 @@ enum class MS_TYPE :unsigned char
     LOGIN_RE_F,
     ADD_ROOM,
     GET_ROOM_LIST,
+    CREATE_ROOM,
     HEARTBEAT,//ÐÄÌø°ü
 };
 using std::string;
@@ -59,10 +60,21 @@ struct USER_BUF
         return str;
     }
 };
+
+
 struct USER_INFO
 {
     USER_BUF name;
     USER_BUF password;
+    USER_INFO()
+    {
+        name=L"";
+        password=L"";
+    }
+    USER_INFO(USER_BUF n,USER_BUF p)
+    {
+        name=n;password=p;
+    }
 };
 struct CLIENT_INFO
 {
@@ -71,25 +83,45 @@ struct CLIENT_INFO
     unsigned short port;
 };
 
+struct ROOM_INFO
+{
+    USER_BUF master,name;
+    unsigned char num;
+};
+
+const unsigned int MAX_BUF_SIZE=sizeof(ROOM_INFO);
+struct DATA_BUF
+{
+    char buf[MAX_BUF_SIZE];
+    DATA_BUF()
+    {
+        memset(buf,0,MAX_BUF_SIZE);
+    }
+    template  <class T>
+    DATA_BUF(const T & u)
+    {
+        int i=0;
+        for(i=0;i<sizeof(u);i++)
+        {
+            buf[i]=(*((char *)&u+i));
+        }
+        memset(buf+i,0,MAX_BUF_SIZE-i);
+    }
+};
 struct DATA_PACKAGE
 {
     MS_TYPE ms_type;
-    USER_INFO user;
+    DATA_BUF buf;
+    template  <class T>
+    DATA_PACKAGE(MS_TYPE type,T & u)
+    {
+        ms_type=type;
+        buf=u;
+    }
     DATA_PACKAGE()
     {
         ms_type=MS_TYPE::HEARTBEAT;
-
-    }
-    DATA_PACKAGE(MS_TYPE type,USER_BUF name, USER_BUF password)
-    {
-        ms_type=type;
-        user.name=name;
-        user.password=password;
+        buf="";
     }
 };
 
-struct ROOM_INFO
-{
-	USER_BUF master,name;
-	int num;
-};

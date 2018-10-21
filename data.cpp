@@ -1,110 +1,107 @@
 #include "data.h"
 #include <QString>
+#include <QtAlgorithms>
 #define MSMAP(x,y) AddMS(MS_TYPE::x,[this,x](USER_INFO)->bool{ this->y(x)});
-Data::Data(QSqlQuery _query):tcp(this)
+Data::Data():tcp(this)
 {
-    query=_query;
-
-
+    ROOM_INFO info;
+    info.master=L"1234";
+    info.name=L"123";
+    info.num=2;
+    room_list.push_back(info);
 }
 
 
 
-bool Data::DealMS(QTcpSocket * _socket,DATA_PACKAGE pack)
+bool Data::DealMS(QTcpSocket * socket,DATA_PACKAGE pack)
 {
-    auto name=QString::fromStdWString(pack.user.name.GetStr());
-    auto password=QString::fromStdWString(pack.user.password.GetStr());
-    socket=_socket;
+
+    m_socket=socket;
     switch (pack.ms_type)
     {
     case MS_TYPE::REGISTER_RQ:
-    {
-        return Register(name,password);
-    }
-    case MS_TYPE::REGISTER_RE_T:
-    {
-        return true;
-    }
+        return Register(socket,pack);
+
     case MS_TYPE::LOGIN_RQ:
-    {
-        return Login(name,password);
-    }
-    case MS_TYPE::LOGIN_RE_F:
-    {
-        return true;
-    }
-    case MS_TYPE::ADD_ROOM:
-    {
-        return 
-    }
+        return Login(socket,pack);
+    case MS_TYPE::GET_ROOM_LIST:
+        return SendRoomList(socket);
+    case MS_TYPE::CREATE_ROOM:
+
     default:
     {
         DATA_PACKAGE pack;
-        tcp.SendMessage(socket,pack);
+        tcp.SendData(m_socket,pack);
         return true;
     }
     }
     return true;
 }
 
-void Data::SendMS(QTcpSocket *socket, DATA_PACKAGE pack)
+
+
+
+
+//USER_INFO Data::RecvUserInfo( QTcpSocket * socket)
+//{
+//    USER_INFO info;
+//    socket->read((char *)&info,sizeof (info));
+//    return info;
+//}
+
+
+
+bool Data::Login(QTcpSocket * socket,DATA_PACKAGE pack)
 {
-    socket->write((char *)&pack,sizeof (pack));
-}
-
-
-
-
-bool Data::Register(QString name, QString password)
-{
-    query.prepare("insert into users(id,pw)values(:Name,:PW)");
-    query.bindValue(":Name",name);
-    query.bindValue(":PW",password);
-    bool flag=query.exec();
-    qDebug()<<"add user"<<(flag?"success":"fail");
-    DATA_PACKAGE pack;
-    pack.ms_type=flag?MS_TYPE::REGISTER_RE_T:MS_TYPE::REGISTER_RE_F;
-    tcp.SendMessage(socket,pack);
-    return flag;
-}
-
-
-
-bool Data::Login(QString name, QString password)
-{
-    query.prepare("select * from users where (id=:Name and pw=:PW);");
-    query.bindValue(":Name",name);
-    query.bindValue(":PW",password);
-    query.exec();
-    bool flag=query.next();
-    if(flag)
-    {
-        qDebug()<<"Login successful.";
-    }
-    else
-    {
-        qDebug()<<"User name or password error.";
-    }
-    DATA_PACKAGE pack;
+    USER_INFO * user=(USER_INFO*)&pack.buf;
+    auto name=QString::fromStdWString(user->name.GetStr());
+    auto password=QString::fromStdWString(user->password.GetStr());
+    bool flag=sql.Login(name,password);
+    pack.buf="";
     pack.ms_type=flag?MS_TYPE::LOGIN_RE_T:MS_TYPE::LOGIN_RE_F;
-    tcp.SendMessage(socket,pack);
+    tcp.SendData(m_socket,pack);
     return flag;
 }
 
-
-bool Data::ChangePassword(QString name, QString password)
+bool Data::ChangePassword(QTcpSocket *socket)
 {
-    query.prepare("update users set pw=:PW where id=:Name;");
-    query.bindValue(":Name",name);
-    query.bindValue(":PW",password);
-    bool flag=query.next();
-    if(flag)
-    {
-        qDebug()<<"Change password success.";
-    }
-    else
-    {
-        qDebug()<<"Change password failure.";
-    }
-    return flag;
+    //bool flag=sql.ChangePassword(name,password);
+    return true;
 }
+
+bool Data::Register(QTcpSocket *socket,DATA_PACKAGE pack)
+{
+    USER_INFO * user=(USER_INFO*)&pack.buf;
+    auto name=QString::fromStdWString(user->name.GetStr());
+    auto password=QString::fromStdWString(user->password.GetStr());
+    bool flag=sql.Register(name,password);
+    pack.buf="";
+    pack.ms_type=flag?MS_TYPE::REGISTER_RE_T:MS_TYPE::REGISTER_RE_F;
+    tcp.SendData(m_socket,pack);
+}
+
+bool Data::SendRoomList(QTcpSocket *socket)
+{
+    DATA_PACKAGE pack;
+    pack.ms_type=MS_TYPE::ADD_ROOM;
+    qSort(room_list.begin(),room_list.end(),[](ROOM_INFO & a,ROOM_INFO & b)->bool {return a.num>b.num;});
+    for(auto i:room_list)
+    {
+        ROOM_INFO info;
+        info.master=i.master;
+        info.name=i.name;
+        info.num=i.num;
+        pack.buf=info;
+        tcp.SendData(socket,pack);
+    }
+}
+
+bool Data::CreatRoom(DATA_PACKAGE pack)
+{
+    ROOM_INFO info=*(ROOM_INFO *)&pack.buf;
+    room_list.push_back(info);
+}
+
+
+
+

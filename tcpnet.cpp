@@ -13,12 +13,10 @@ TCPNet::TCPNet(Data *d)
     my_thread_reply=new MyThread;
     qthread_reply=new QThread;
     my_thread_reply->moveToThread(qthread_reply);
-
-    connect(this, &TCPNet::ReplySignal,my_thread_reply,&MyThread::Reply);
-    connect(my_thread_reply, &MyThread::tests,my_thread_reply,&MyThread::test);
+    qthread_reply->start();
+    connect(my_thread_reply, &MyThread::ReplySignal,my_thread_reply,&MyThread::Reply);
     connect(server,&QTcpServer::newConnection, this,&TCPNet::newConnection);
     data=d;
-    emit my_thread_reply->tests();
 }
 
 TCPNet::~TCPNet()
@@ -26,10 +24,9 @@ TCPNet::~TCPNet()
 
 }
 
-void TCPNet::SendMessage(QTcpSocket *socket,const DATA_PACKAGE & pack)
+void TCPNet::SendData(QTcpSocket *socket,const DATA_PACKAGE & pack)
 {
-    emit ReplySignal(socket,pack);
-
+    socket->write((char *)&pack,sizeof (pack));
 }
 
 void TCPNet::newConnection()
