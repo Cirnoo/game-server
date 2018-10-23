@@ -37,18 +37,6 @@ bool Data::DealMS(QTcpSocket * socket,const DATA_PACKAGE & pack)
 }
 
 
-
-
-
-//USER_INFO Data::RecvUserInfo( QTcpSocket * socket)
-//{
-//    USER_INFO info;
-//    socket->read((char *)&info,sizeof (info));
-//    return info;
-//}
-
-
-
 bool Data::Login(QTcpSocket * socket,DATA_PACKAGE pack)
 {
     USER_INFO * user=(USER_INFO*)&pack.buf;

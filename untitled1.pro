@@ -19,7 +19,8 @@ SOURCES += \
     data.cpp \
     tcpnet.cpp \
     mythread.cpp \
-    mysql.cpp
+    mysql.cpp \
+    game.cpp
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -33,5 +34,6 @@ HEADERS += \
     Packdef.h \
     tcpnet.h \
     mythread.h \
-    mysql.h
+    mysql.h \
+    game.h
 
