@@ -3,7 +3,6 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QObject>
-#include <QHash>
 #include <Packdef.h>
 class MyThread;
 class Data;
@@ -14,13 +13,11 @@ public:
     TCPNet( Data * d);
     ~TCPNet();
     void SendData(QTcpSocket *socket, const DATA_PACKAGE &pack);
-    void Broadcast(const DATA_PACKAGE &pack);
 private :
     void newConnection();
 private:
     QTcpServer* server=nullptr;
     QTcpSocket* socket=nullptr;
-    QHash<QTcpSocket *,CLIENT_INFO> user_map;
     void readMessage();
     void PrintInfo(QTcpSocket * s);
     Data * data;

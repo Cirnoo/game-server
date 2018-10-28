@@ -1,8 +1,10 @@
 #include "data.h"
 #include <QString>
 #include <QtAlgorithms>
+#include "game.h"
 #define MSMAP(x,y) AddMS(MS_TYPE::x,[this,x](USER_INFO)->bool{ this->y(x)});
-Data::Data():tcp(this)
+Data::Data():
+    tcp(this),game(Game::GetInstance())
 {
 
 }
@@ -26,6 +28,8 @@ bool Data::DealMS(QTcpSocket * socket,const DATA_PACKAGE & pack)
         return LeaveRoom(socket,pack);
     case MS_TYPE::ENTER_ROOM:
         return EnterRoom(socket,pack);
+    case MS_TYPE::GAME_START:
+
     default:
     {
         DATA_PACKAGE pack;
@@ -34,6 +38,19 @@ bool Data::DealMS(QTcpSocket * socket,const DATA_PACKAGE & pack)
     }
     }
     return true;
+}
+
+void Data::NewConnection(QTcpSocket *socket)
+{
+    if(!user_map.count(socket))
+    {
+        PRINT("新的连接...")
+        CLIENT_INFO info;
+        info.ip=socket->peerAddress().toString().toStdString();
+        info.port=socket->peerPort();
+        user_map[socket]=(info);
+        PRINT(info.ip<<"::"<<info.port)
+    }
 }
 
 
@@ -46,6 +63,7 @@ bool Data::Login(QTcpSocket * socket,DATA_PACKAGE pack)
     pack.buf="";
     pack.ms_type=flag?MS_TYPE::LOGIN_RE_T:MS_TYPE::LOGIN_RE_F;
     tcp.SendData(m_socket,pack);
+    user_map[socket].username=user->name.GetStr();
     return flag;
 }
 
@@ -73,7 +91,7 @@ bool Data::SendRoomList(QTcpSocket *socket)
     for(auto i:room_map)
     {
         ROOM_LIST_INFO info;
-        info.master=i.second.mate[0].GetStr();
+        info.master=i.second.mate_arr[0];
         info.name=i.second.name;
         info.num=i.second.num;
         pack.buf=info;
@@ -85,10 +103,10 @@ bool Data::CreatRoom(QTcpSocket *socket,DATA_PACKAGE pack)
 {
     ROOM_LIST_INFO* info=(ROOM_LIST_INFO *)&pack.buf;
     ROOM_INFO room;
-    room.AddPlayer(*info);
+    room.AddPlayer(socket,*info);
     room_map[info->master.GetStr()]=room;
     PRINT("创建房间成功")
-    UpdateRoom();
+    UpdateRoomList();
 }
 
 bool Data::LeaveRoom(QTcpSocket *socket,DATA_PACKAGE pack)
@@ -98,14 +116,14 @@ bool Data::LeaveRoom(QTcpSocket *socket,DATA_PACKAGE pack)
     {
         for(int j=0;j<3;j++)
         {
-            if(i->second.mate[j].GetStr()==info->master.GetStr())
+            if(i->second.mate_arr[j]==info->master.GetStr())
             {
                 //do something
-                i->second.mate[j]=L"";
+                i->second.mate_arr[j]=L"";
                 if(--(i->second.num)==0)
                 {
                     room_map.erase(i);
-                    UpdateRoom();
+                    UpdateRoomList();
                     break;
                 }
             }
@@ -118,24 +136,56 @@ bool Data::LeaveRoom(QTcpSocket *socket,DATA_PACKAGE pack)
 bool Data::EnterRoom(QTcpSocket *socket, DATA_PACKAGE pack)
 {
     ROOM_LIST_INFO* info=(ROOM_LIST_INFO *)&pack.buf;
-    if(room_map[info->master.GetStr()].AddPlayer(*info))
+    auto  & cur_room=room_map[info->master.GetStr()];
+    if(cur_room.AddPlayer(socket,*info))
     {
-        //do something
-        UpdateRoom();
+        //do somethin
+        UpdateRoomList();
+        DATA_PACKAGE pack;
+        pack.ms_type=MS_TYPE::ADD_PLAYER;
+        pack.buf=info->master;
+        for(int i=0;i<2;i++)
+        {
+            if(cur_room.socket_arr[i])
+            {
+                tcp.SendData(cur_room.socket_arr[i],pack);
+            }
+        }
         return true;
     }
-    else
-    {
-        return false;
-    }
+
+    return false;
 
 }
 
-void Data::UpdateRoom()
+bool Data::GameStart(QTcpSocket * socket)
+{
+    /************send poker***********/
+    auto group=game->GetPokerGroup();
+    auto & room_socker=room_map[user_map[socket].username].socket_arr;
+    DATA_PACKAGE pack;
+    pack.ms_type=MS_TYPE::GET_POKER;
+    for(char i=0;i<3;i++)
+    {
+        group.num=i;
+        pack.buf=group;
+        tcp.SendData(room_socker[i],pack);
+    }
+
+}
+void Data::UpdateRoomList()
 {
     DATA_PACKAGE data;
     data.ms_type=MS_TYPE::UPDATE_ROOM;
-    tcp.Broadcast(data);
+    Broadcast(data);
+}
+
+void Data::Broadcast(const DATA_PACKAGE &pack)
+{
+  for(auto i=user_map.begin();i!=user_map.end();i++)
+  {
+      tcp.SendData(i->first,pack);
+  }
 }
 
 
