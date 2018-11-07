@@ -26,11 +26,15 @@ enum class MS_TYPE :unsigned char
     GET_ROOM_LIST,
     CREATE_ROOM,
     ENTER_ROOM,
+    MATE_INFO_RE,
     LEAVE_ROOM,
     UPDATE_ROOM,
     ADD_PLAYER,
     GAME_START,
-    GET_POKER,
+    ALLOC_POKER,
+    GAME_WIN,
+    WANT_LANDLORD,
+    NOT_WANT_LANDLORD,
     HEARTBEAT,//心跳包
 };
 using std::string;
@@ -79,25 +83,90 @@ enum class PokerPoints : unsigned char
 {
     Three=3,Four,Five,Six,Seven,Eight,Nine,Ten,jack,Queen,King,Ace,Two,Black_Joker,Red_Joker
 };
-struct Poker
+struct Poker		//单张扑克
 {
-    CardType c_type;
-    PokerPoints point;
-    Poker(){}
-    Poker(CardType t,PokerPoints p)
-    {
-        c_type=t;
-        point=p;
-    }
-    void operator=(const Poker & u )
-    {
-        c_type=u.c_type;point=u.point;
-    }
+	CardType c_type;
+	PokerPoints point;
+	bool hide;  //是否背面
+	bool check; //是否选中
+	bool select; //是否被框选
+	Poker(){InitVar();}
+	Poker(char num)
+	{
+		InitVar();
+		Q_ASSERT(num>=0&&num<54);
+		if (num<52)
+		{
+			c_type=CardType(num/13);
+			point=PokerPoints(num%13);
+		}
+		else
+		{
+			c_type=CardType::Joker;
+			point=PokerPoints(num-52+13);
+		}
+	}
+	Poker(CardType t,PokerPoints p)
+	{
+		InitVar();
+		c_type=t;
+		point=p;
+	}
+	int operator-(const Poker & p) const
+	{
+		return p.GetPointVal()-this->GetPointVal();
+	}
+	bool operator==(const Poker & p) const
+	{
+		return point==p.point;
+	}
+	char toNum() const
+	{
+		return c_type==CardType::Joker?52-13+(char)point:13*(char)c_type+(char)point;
+	}
+	char GetPointVal() const
+	{
+		return static_cast<char> (point);
+	}
+private:
+	void InitVar()
+	{
+		hide=false;check=false;select=false;
+	}
+
 };
+
+
+enum ArrayType : unsigned char
+{
+//	无,单牌,对子,三张,三带一,三带对,顺子,双顺,三顺,飞机,四带二,炸弹,王炸
+    
+    //英文无力,绝望了
+};
+
+struct CardArray		//需要打出的牌
+{
+	char cards[20]; //一次最多打20张牌
+	ArrayType type;	//牌组类型
+	unsigned char point; //计算出的大小点数
+	unsigned char num;  //牌个数
+	CardArray(const std::vector<Poker> & vec, ArrayType _type,unsigned char _point )
+	{
+		memset(cards,0,sizeof(cards));
+		num=vec.size();
+		type=_type;point=_point;
+		for (int i=0;i<num;i++)
+		{
+			cards[i]=vec[i].toNum();
+		}
+        
+	}
+};
+
 
 struct PokerGroup
 {
-    char poker[3][16]; // 16 张/person
+    char poker[3][17]; // 17 张/person
     char last[3];      // 地主牌
     char num;
     char & operator[](char i)
@@ -126,21 +195,28 @@ struct USER_INFO
 };
 struct CLIENT_INFO
 {
-    wstring username;
+    wstring username,room_name;
     string ip;
     unsigned short port;
 };
 
 struct ROOM_LIST_INFO
 {
-    USER_BUF master,name;
+    USER_BUF name;
     unsigned char num;
 };
+
+struct PLAYER_INFO
+{
+    USER_BUF name,room_name;
+    char pos;
+};
+
 class QTcpSocket;
 struct ROOM_INFO
 {
     wstring mate_arr[3],name;
-    unsigned char num;
+    char num;
     QTcpSocket * socket_arr[3];
     ROOM_INFO()
     {
@@ -148,8 +224,9 @@ struct ROOM_INFO
         {
             socket_arr[i]=nullptr;
         }
+        num=0;
     }
-    bool AddPlayer( QTcpSocket * _socket,const ROOM_LIST_INFO & info)
+    bool AddPlayer( QTcpSocket * _socket,const PLAYER_INFO & info)
     {
         for(int i=0;i<3;i++)
         {
@@ -157,22 +234,30 @@ struct ROOM_INFO
             {
                 if(i==0)
                 {
-                    name=info.name.GetStr();
-                    num=1;
+                    name=info.room_name.GetStr();
                 }
-                else
-                {
-                    num++;
-                }
-                mate_arr[i]=info.master.GetStr();
+                ++num;
+                mate_arr[i]=info.name.GetStr();
                 socket_arr[i]=_socket;
                 return true;
             }
         }
         return false;
     }
+    void DelPlayer(const char pos)
+    {
+       if(socket_arr[pos-1]==nullptr)
+           return;
+       socket_arr[pos-1]=nullptr;
+       mate_arr[pos-1].clear();
+       num--;
+    }
+
 };
-const unsigned int MAX_BUF_SIZE=sizeof(ROOM_LIST_INFO);
+const uint MAX_BUF_SIZE=sizeof(PLAYER_INFO);
+
+
+
 struct DATA_BUF
 {
     char buf[MAX_BUF_SIZE];

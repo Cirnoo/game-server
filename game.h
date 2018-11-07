@@ -7,7 +7,7 @@
 class Game
 {
 public:
-    static Game * GetInstance();
+    static Game & GetInstance();
     PokerGroup GetPokerGroup();
 private:
     void InitPoker();

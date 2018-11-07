@@ -88,63 +88,65 @@ bool Data::SendRoomList(QTcpSocket *socket)
 {
     DATA_PACKAGE pack;
     pack.ms_type=MS_TYPE::ADD_ROOM;
-    for(auto i:room_map)
+    for(const auto & i:room_map)
     {
         ROOM_LIST_INFO info;
-        info.master=i.second.mate_arr[0];
         info.name=i.second.name;
         info.num=i.second.num;
         pack.buf=info;
         tcp.SendData(socket,pack);
     }
+    return true;
 }
 
 bool Data::CreatRoom(QTcpSocket *socket,DATA_PACKAGE pack)
 {
-    ROOM_LIST_INFO* info=(ROOM_LIST_INFO *)&pack.buf;
+    PLAYER_INFO* info=(PLAYER_INFO *)&pack.buf;
     ROOM_INFO room;
-    room.AddPlayer(socket,*info);
-    room_map[info->master.GetStr()]=room;
+    if(room.AddPlayer(socket,*info)==false)
+    {
+        return false;
+    }
+    room_map[info->room_name.GetStr()]=room;
+    user_map[socket].room_name=room.name;
     PRINT("创建房间成功")
     UpdateRoomList();
+    return true;
 }
 
 bool Data::LeaveRoom(QTcpSocket *socket,DATA_PACKAGE pack)
 {
-    ROOM_LIST_INFO* info=(ROOM_LIST_INFO *)&pack.buf;
-    for(auto i=room_map.begin();i!=room_map.end();i++)
-    {
-        for(int j=0;j<3;j++)
-        {
-            if(i->second.mate_arr[j]==info->master.GetStr())
-            {
-                //do something
-                i->second.mate_arr[j]=L"";
-                if(--(i->second.num)==0)
-                {
-                    room_map.erase(i);
-                    UpdateRoomList();
-                    break;
-                }
-            }
-        }
-
-    }
+    PLAYER_INFO* info=(PLAYER_INFO *)&pack.buf;
+    const auto & room_name=user_map[socket].room_name;
+    room_map[room_name].DelPlayer(info->pos);
+    user_map[socket].room_name.clear();
+    UpdateRoomList();
     return true;
 }
 
 bool Data::EnterRoom(QTcpSocket *socket, DATA_PACKAGE pack)
 {
-    ROOM_LIST_INFO* info=(ROOM_LIST_INFO *)&pack.buf;
-    auto  & cur_room=room_map[info->master.GetStr()];
+    PLAYER_INFO* info=(PLAYER_INFO *)&pack.buf;
+    auto  & cur_room=room_map[info->room_name.GetStr()];
     if(cur_room.AddPlayer(socket,*info))
     {
         //do somethin
         UpdateRoomList();
         DATA_PACKAGE pack;
-        pack.ms_type=MS_TYPE::ADD_PLAYER;
-        pack.buf=info->master;
-        for(int i=0;i<2;i++)
+        pack.ms_type=MS_TYPE::MATE_INFO_RE;
+
+        //Enter the room successfully  发送另外2个玩家的信息 有问题
+        typedef  PLAYER_INFO SIMPLE_ROOM_INFO[2];
+        SIMPLE_ROOM_INFO temp;
+        int cnt_flag=0;
+        for(int i:{0,1,2})
+        {
+            temp[cnt_flag].name=cur_room.mate_arr[cnt_flag];
+            temp[cnt_flag].pos=i;
+            cnt_flag++;
+        }
+        pack.buf=temp;
+        for(int i=0;i<cur_room.num-1;i++)
         {
             if(cur_room.socket_arr[i])
             {
@@ -161,10 +163,10 @@ bool Data::EnterRoom(QTcpSocket *socket, DATA_PACKAGE pack)
 bool Data::GameStart(QTcpSocket * socket)
 {
     /************send poker***********/
-    auto group=game->GetPokerGroup();
+    auto group=game.GetPokerGroup();
     auto & room_socker=room_map[user_map[socket].username].socket_arr;
     DATA_PACKAGE pack;
-    pack.ms_type=MS_TYPE::GET_POKER;
+    pack.ms_type=MS_TYPE::ALLOC_POKER;
     for(char i=0;i<3;i++)
     {
         group.num=i;

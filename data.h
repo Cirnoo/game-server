@@ -32,7 +32,7 @@ private:
     void UpdateRoomList();
     void Broadcast(const DATA_PACKAGE &pack);
     TCPNet tcp;
-    Game * const game;
+    Game & game;
     QTcpSocket * m_socket;
     std::unordered_map<wstring,ROOM_INFO> room_map;
     std::unordered_map<QTcpSocket *,CLIENT_INFO> user_map;

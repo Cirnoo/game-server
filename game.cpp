@@ -2,9 +2,9 @@
 #include "game.h"
 
 Game * Game::game= new Game();
-Game * Game::GetInstance()
+Game &Game::GetInstance()
 {
-    return Game::game;
+    return *Game::game;
 }
 
 PokerGroup Game::GetPokerGroup()
