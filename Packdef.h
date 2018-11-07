@@ -12,7 +12,7 @@
 #define _DEF_ROOMBUFFERSIZE 550*1000
 #define _DEF_NUM 10
 #define _DEF_SQLLEN 100
-#define USER_LENGTH 20
+#define USER_LENGTH 10
 using std::wstring;
 enum class MS_TYPE :unsigned char
 {
@@ -25,7 +25,11 @@ enum class MS_TYPE :unsigned char
     ADD_ROOM,
     GET_ROOM_LIST,
     CREATE_ROOM,
+    CREATE_ROOM_RE_T,
+    CREATE_ROOM_RE_F,
     ENTER_ROOM,
+    ENTER_ROOM_RE_T,
+    ENTER_ROOM_RE_F,
     MATE_INFO_RE,
     LEAVE_ROOM,
     UPDATE_ROOM,
@@ -35,6 +39,7 @@ enum class MS_TYPE :unsigned char
     GAME_WIN,
     WANT_LANDLORD,
     NOT_WANT_LANDLORD,
+    GAME_OFFLINE,
     HEARTBEAT,//ÐÄÌø°ü
 };
 using std::string;
@@ -197,6 +202,7 @@ struct CLIENT_INFO
 {
     wstring username,room_name;
     string ip;
+    char room_pos;
     unsigned short port;
 };
 
@@ -204,6 +210,12 @@ struct ROOM_LIST_INFO
 {
     USER_BUF name;
     unsigned char num;
+};
+
+struct MATE_INFO
+{
+    USER_BUF name;
+    char pos;
 };
 
 struct PLAYER_INFO
@@ -226,7 +238,7 @@ struct ROOM_INFO
         }
         num=0;
     }
-    bool AddPlayer( QTcpSocket * _socket,const PLAYER_INFO & info)
+    int AddPlayer( QTcpSocket * _socket,const PLAYER_INFO & info)
     {
         for(int i=0;i<3;i++)
         {
@@ -239,10 +251,10 @@ struct ROOM_INFO
                 ++num;
                 mate_arr[i]=info.name.GetStr();
                 socket_arr[i]=_socket;
-                return true;
+                return i;
             }
         }
-        return false;
+        return -1;
     }
     void DelPlayer(const char pos)
     {
@@ -254,7 +266,7 @@ struct ROOM_INFO
     }
 
 };
-const uint MAX_BUF_SIZE=sizeof(PLAYER_INFO);
+const uint MAX_BUF_SIZE=sizeof(ROOM_LIST_INFO)*3;
 
 
 
