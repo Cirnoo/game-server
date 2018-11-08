@@ -20,7 +20,8 @@ SOURCES += \
     tcpnet.cpp \
     mythread.cpp \
     mysql.cpp \
-    game.cpp
+    game.cpp \
+    clientmanager.cpp
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -35,5 +36,6 @@ HEADERS += \
     tcpnet.h \
     mythread.h \
     mysql.h \
-    game.h
+    game.h \
+    clientmanager.h
 

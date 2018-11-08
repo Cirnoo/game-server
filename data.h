@@ -17,6 +17,7 @@ public:
     bool DealMS(QTcpSocket *m_socket, DATA_PACKAGE &pack);
     void NewConnection(QTcpSocket * socket);
 private:
+
     MySQL sql;
     void AddMS(MS_TYPE _type,std::function<bool (USER_INFO)> _cmd);
     void SocketInit();
@@ -30,13 +31,12 @@ private:
     bool EnterRoom(QTcpSocket *socket, DATA_PACKAGE & pack);
     bool OffLine(QTcpSocket *socket);
     bool GameStart(QTcpSocket * socket);
-    void UpdateRoomList();
-    void Broadcast(const DATA_PACKAGE &pack);
+    void UpdateRoomList(const ROOM_LIST_INFO & info);
+    void Broadcast(const DATA_PACKAGE &pack, const ClientState state);
     TCPNet tcp;
     Game & game;
-    QTcpSocket * m_socket;
     std::unordered_map<wstring,ROOM_INFO> room_map;
-    std::unordered_map<QTcpSocket *,CLIENT_INFO> user_map;
+    std::unordered_map<QTcpSocket *,CLIENT_INFO> player_map;
 };
 
 #endif // DATA_H

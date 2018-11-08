@@ -4,7 +4,7 @@
 #include "game.h"
 #define MSMAP(x,y) AddMS(MS_TYPE::x,[this,x](USER_INFO)->bool{ this->y(x)});
 Data::Data():
-    tcp(this),game(Game::GetInstance())
+    tcp(*this),game(Game::GetInstance())
 {
 
 }
@@ -13,7 +13,6 @@ Data::Data():
 
 bool Data::DealMS(QTcpSocket * socket,DATA_PACKAGE & pack)
 {
-    m_socket=socket;
     switch (pack.ms_type)
     {
     case MS_TYPE::REGISTER_RQ:
@@ -30,10 +29,12 @@ bool Data::DealMS(QTcpSocket * socket,DATA_PACKAGE & pack)
         return EnterRoom(socket,pack);
     case MS_TYPE::GAME_START:
         return true;
+    case MS_TYPE::GAME_OFFLINE:
+        return OffLine(socket);
     default:
     {
         DATA_PACKAGE pack;
-        tcp.SendData(m_socket,pack);
+        tcp.SendData(socket,pack);
         return true;
     }
     }
@@ -42,13 +43,13 @@ bool Data::DealMS(QTcpSocket * socket,DATA_PACKAGE & pack)
 
 void Data::NewConnection(QTcpSocket *socket)
 {
-    if(!user_map.count(socket))
+    if(!player_map.count(socket))
     {
         PRINT("新的连接...")
         CLIENT_INFO info;
         info.ip=socket->peerAddress().toString().toStdString();
         info.port=socket->peerPort();
-        user_map[socket]=(info);
+        player_map[socket]=(info);
         PRINT(info.ip<<"::"<<info.port)
     }
 }
@@ -62,8 +63,8 @@ bool Data::Login(QTcpSocket * socket, DATA_PACKAGE &pack)
     bool flag=sql.Login(name,password);
     pack.buf="";
     pack.ms_type=flag?MS_TYPE::LOGIN_RE_T:MS_TYPE::LOGIN_RE_F;
-    tcp.SendData(m_socket,pack);
-    user_map[socket].username=user->name.GetStr();
+    tcp.SendData(socket,pack);
+    player_map[socket].username=user->name.GetStr();
     return flag;
 }
 
@@ -81,11 +82,12 @@ bool Data::Register(QTcpSocket *socket, DATA_PACKAGE &pack)
     bool flag=sql.Register(name,password);
     pack.buf="";
     pack.ms_type=flag?MS_TYPE::REGISTER_RE_T:MS_TYPE::REGISTER_RE_F;
-    tcp.SendData(m_socket,pack);
+    tcp.SendData(socket,pack);
 }
 
 bool Data::SendRoomList(QTcpSocket *socket)
 {
+    player_map[socket].state=ClientState::GameRoom;     //玩家处于游戏大厅
     DATA_PACKAGE pack;
     pack.ms_type=MS_TYPE::ADD_ROOM;
     for(const auto & i:room_map)
@@ -102,32 +104,59 @@ bool Data::SendRoomList(QTcpSocket *socket)
 bool Data::CreatRoom(QTcpSocket *socket, DATA_PACKAGE &pack)
 {
     PLAYER_INFO* info=(PLAYER_INFO *)&pack.buf;
-    ROOM_INFO room;
-    int player_pos=room.AddPlayer(socket,*info);
-    DATA_PACKAGE pack_to_client;
-    if(player_pos==-1)
+
+    if(room_map.count(info->room_name.GetStr())!=0)
     {
-        pack_to_client.ms_type=MS_TYPE::CREATE_ROOM_RE_F;
+        pack.ms_type=MS_TYPE::CREATE_ROOM_RE_F;     //room name already exist
+        pack.buf.Clear();
+        tcp.SendData(socket,pack);
         return false;
     }
-
-    room_map[info->room_name.GetStr()]=room;
-    user_map[socket].room_name=room.name;
-    user_map[socket].room_pos=player_pos;
+    ROOM_INFO room;             //get room name from client
+    int player_pos=room.AddPlayer(socket,*info);
+    room.name=info->room_name.GetStr();
+    pack.buf.Clear();
+    info=nullptr;
+    if(player_pos==-1)
+    {
+        pack.ms_type=MS_TYPE::CREATE_ROOM_RE_F;
+        tcp.SendData(socket,pack);
+        return false;
+    }
+    auto & cur_player=player_map[socket];
+    room_map[room.name]=room;
+    cur_player.room_name=room.name;
+    cur_player.room_pos=player_pos;
+    cur_player.state=ClientState::Gaming;       //change client state
     PRINT("创建房间成功")
-    pack_to_client.ms_type=MS_TYPE::CREATE_ROOM_RE_T;
-    tcp.SendData(socket,pack_to_client);
-    UpdateRoomList();
+
+
+
+    pack.ms_type=MS_TYPE::CREATE_ROOM_RE_T;
+    tcp.SendData(socket,pack);        //回复客户端创建房间成功
+    ROOM_LIST_INFO new_room_info;
+    new_room_info.name=room.name;
+    new_room_info.num=room.num;
+    UpdateRoomList(new_room_info);
     return true;
 }
 
 bool Data::LeaveRoom(QTcpSocket *socket)
 {
-    const auto & room=user_map[socket];
-    room_map[room.room_name].DelPlayer(room.room_pos);
-    user_map[socket].room_name.clear();
-    user_map[socket].room_pos=-1;
-    UpdateRoomList();
+    auto & cur_player=player_map[socket];
+    auto & cur_room=room_map[cur_player.room_name];
+    cur_room.DelPlayer(cur_player.room_pos);
+    char player_num=cur_room.num;
+    if(cur_room.IsEmpty())
+    {
+        room_map.erase(room_map.find(cur_player.room_name));
+    }
+    cur_player.room_name.clear();
+    cur_player.room_pos=-1;
+    ROOM_LIST_INFO info;
+    info.name=cur_player.room_name;
+    info.num=player_num;
+    UpdateRoomList(info);
     return true;
 }
 
@@ -139,14 +168,14 @@ bool Data::EnterRoom(QTcpSocket *socket, DATA_PACKAGE &pack)
     if(player_pos!=-1)
     {
         //do somethin
-        UpdateRoomList();
 
-        user_map[socket].room_pos=player_pos;
-        user_map[socket].room_name=cur_room.name;
+        auto & cur_player=player_map[socket];
+        cur_player.room_pos=player_pos;
+        cur_player.room_name=cur_room.name;
+        cur_player.state=ClientState::Gaming;
         //Enter the room successfully  有问题
         typedef  USER_BUF SIMPLE_ROOM_INFO[3];
         SIMPLE_ROOM_INFO temp;
-        DATA_PACKAGE pack;
         for(int i:{0,1,2})
         {
             if(i==player_pos)
@@ -169,6 +198,10 @@ bool Data::EnterRoom(QTcpSocket *socket, DATA_PACKAGE &pack)
                 tcp.SendData(cur_room.socket_arr[i],pack);
             }
         }
+        ROOM_LIST_INFO new_room_info;
+        new_room_info.name=cur_room.name;
+        new_room_info.num=cur_room.num;
+        UpdateRoomList(new_room_info);
         return true;
     }
 
@@ -178,15 +211,23 @@ bool Data::EnterRoom(QTcpSocket *socket, DATA_PACKAGE &pack)
 
 bool Data::OffLine(QTcpSocket *socket)
 {
-    auto & user=user_map.find(socket)->second;
+    auto & user=player_map.find(socket)->second;
     if(!user.room_name.empty())
     {
-        const auto & room=user_map[socket];
-        room_map[room.room_name].DelPlayer(room.room_pos);  //从房间中删除
+        const auto & room=player_map[socket];
+        auto room_ite=room_map.find(room.room_name);
+        room_ite->second.DelPlayer(room.room_pos);  //从房间中删除
+        if(room_ite->second.IsEmpty())
+        {
+            room_map.erase(room_ite);
+        }
     }
     PRINT(user.ip<<"::"<<user.port<<" offline");
-    user_map.erase(user_map.find(socket));      //从房间列表删除
-
+    player_map.erase(player_map.find(socket));      //从玩家列表删除
+    socket->disconnect();
+    socket->disconnectFromHost();
+    socket->deleteLater();
+    socket=nullptr;
     return true;
 }
 
@@ -194,7 +235,7 @@ bool Data::GameStart(QTcpSocket * socket)
 {
     /************send poker***********/
     auto group=game.GetPokerGroup();
-    auto & room_socker=room_map[user_map[socket].username].socket_arr;
+    auto & room_socker=room_map[player_map[socket].username].socket_arr;
     DATA_PACKAGE pack;
     pack.ms_type=MS_TYPE::ALLOC_POKER;
     for(char i=0;i<3;i++)
@@ -205,18 +246,20 @@ bool Data::GameStart(QTcpSocket * socket)
     }
 
 }
-void Data::UpdateRoomList()
+void Data::UpdateRoomList(const ROOM_LIST_INFO & info)
 {
-    DATA_PACKAGE data;
-    data.ms_type=MS_TYPE::UPDATE_ROOM;
-    Broadcast(data);
+    DATA_PACKAGE data(MS_TYPE::UPDATE_ROOM,info);
+    Broadcast(data,ClientState::GameRoom);
 }
 
-void Data::Broadcast(const DATA_PACKAGE &pack)
+void Data::Broadcast(const DATA_PACKAGE &pack,const ClientState  state) //只给此状态的玩家发送
 {
-  for(auto i=user_map.begin();i!=user_map.end();i++)
+  for(auto i=player_map.begin();i!=player_map.end();i++)
   {
-      tcp.SendData(i->first,pack);
+      if(i->second.state==state)
+      {
+          tcp.SendData(i->first,pack);
+      }
   }
 }
 

@@ -48,10 +48,7 @@ struct USER_BUF
     wchar_t buf[USER_LENGTH];
     USER_BUF()
     {
-        for(int i=0;i<USER_LENGTH;i++)
-        {
-            buf[i]=0;
-        }
+       Clear();
     }
     USER_BUF(wstring str)
     {
@@ -61,18 +58,24 @@ struct USER_BUF
         }
         str.copy(buf, str.size(), 0);
     }
-    void operator=(const USER_BUF & u )
+    USER_BUF & operator=(const USER_BUF & u )
     {
         memcpy(buf,u.buf,USER_LENGTH);
+        return *this;
     }
-    void operator=(const wstring & str)
+    USER_BUF &  operator=(const wstring & str)
     {
         str.copy(buf, str.size(), 0);
+        return *this;
     }
     wstring GetStr() const
     {
         wstring str=wstring(buf);
         return str;
+    }
+    void Clear()
+    {
+        memset(buf,0,sizeof(buf));
     }
 };
 
@@ -186,8 +189,8 @@ struct USER_INFO
     USER_BUF password;
     USER_INFO()
     {
-        name=L"";
-        password=L"";
+        name.Clear();
+        password.Clear();
     }
     USER_INFO(USER_BUF n,USER_BUF p)
     {
@@ -198,18 +201,28 @@ struct USER_INFO
         name=u.name;password=u.password;
     }
 };
+
+enum class ClientState  //客户端状态
+{
+    Other,
+    GameRoom,   //游戏大厅
+    Gaming      //游戏中
+};
+
 struct CLIENT_INFO
 {
     wstring username,room_name;
     string ip;
     char room_pos;
     unsigned short port;
+    ClientState state=ClientState::Other;
 };
 
 struct ROOM_LIST_INFO
 {
     USER_BUF name;
     unsigned char num;
+
 };
 
 struct MATE_INFO
@@ -223,6 +236,7 @@ struct PLAYER_INFO
     USER_BUF name,room_name;
     char pos;
 };
+
 
 class QTcpSocket;
 struct ROOM_INFO
@@ -256,13 +270,17 @@ struct ROOM_INFO
         }
         return -1;
     }
-    void DelPlayer(const char pos)
+    void DelPlayer(const char pos)      //true
     {
        if(socket_arr[pos-1]==nullptr)
            return;
        socket_arr[pos-1]=nullptr;
        mate_arr[pos-1].clear();
-       num--;
+       --num;
+    }
+    bool IsEmpty()
+    {
+        return num<=0;
     }
 
 };
@@ -287,6 +305,10 @@ struct DATA_BUF
         }
         memset(buf+i,0,MAX_BUF_SIZE-i);
     }
+    void Clear()
+    {
+        memset(buf,0,sizeof(buf));
+    }
 };
 struct DATA_PACKAGE
 {
@@ -301,7 +323,8 @@ struct DATA_PACKAGE
     DATA_PACKAGE()
     {
         ms_type=MS_TYPE::HEARTBEAT;
-        buf="";
+        buf.Clear();
     }
+
 };
 
