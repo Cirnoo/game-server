@@ -21,7 +21,8 @@ SOURCES += \
     mythread.cpp \
     mysql.cpp \
     game.cpp \
-    clientmanager.cpp
+    clientmanager.cpp \
+    roominfo.cpp
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -37,5 +38,6 @@ HEADERS += \
     mythread.h \
     mysql.h \
     game.h \
-    clientmanager.h
+    clientmanager.h \
+    roominfo.h
 

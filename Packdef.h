@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <QString>
+#include <array>
 #define PRINT(a) std::cout<<a<<"\n";
 
 #define _DEF_PORT 1234
@@ -16,31 +17,36 @@
 using std::wstring;
 enum class MS_TYPE :unsigned char
 {
-    REGISTER_RQ,
-    REGISTER_RE_T,
-    REGISTER_RE_F,
-    LOGIN_RQ,
-    LOGIN_RE_T,
-    LOGIN_RE_F,
-    ADD_ROOM,
-    GET_ROOM_LIST,
-    CREATE_ROOM,
-    CREATE_ROOM_RE_T,
-    CREATE_ROOM_RE_F,
-    ENTER_ROOM,
-    ENTER_ROOM_RE_T,
-    ENTER_ROOM_RE_F,
-    MATE_INFO_RE,
-    LEAVE_ROOM,
-    UPDATE_ROOM,
-    ADD_PLAYER,
-    GAME_START,
-    ALLOC_POKER,
-    GAME_WIN,
-    WANT_LANDLORD,
-    NOT_WANT_LANDLORD,
-    GAME_OFFLINE,
-    HEARTBEAT,//心跳包
+	REGISTER_RQ,
+	REGISTER_RE_T,
+	REGISTER_RE_F,
+	LOGIN_RQ,
+	LOGIN_RE_T,
+	LOGIN_RE_F,
+	ADD_ROOM,
+	GET_ROOM_LIST,
+	CREATE_ROOM,
+	CREATE_ROOM_RE_T,
+	CREATE_ROOM_RE_F,
+	ENTER_ROOM,
+	ENTER_ROOM_RE_T,
+	ENTER_ROOM_RE_F,
+	MATE_INFO_UPDATE,
+	LEAVE_ROOM,
+	UPDATE_ROOM,
+	GAME_START,
+	ALLOC_POKER,			//发牌
+	SELECT_LANDLORD_CALL,	//询问是否叫地主
+	SELECT_LANDLORD_ROB,	//询问是否抢地主
+	WANT_LANDLORD,			//叫地主/抢地主
+	NOT_WANT_LANDLORD,		//不叫/不抢
+	SET_LANDLORD,			//叫地主阶段完成
+	PLAY_CARD,
+	PASS,
+	GAME_WIN_RQ,
+	GAME_OFFLINE,
+	GAME_RESTRT,
+	HEARTBEAT,//心跳包
 };
 using std::string;
 struct USER_BUF
@@ -172,16 +178,6 @@ struct CardArray		//需要打出的牌
 };
 
 
-struct PokerGroup
-{
-    char poker[3][17]; // 17 张/person
-    char last[3];      // 地主牌
-    char num;
-    char & operator[](char i)
-    {
-        return *(poker[0]+i);
-    }
-};
 
 struct USER_INFO
 {
@@ -209,20 +205,11 @@ enum class ClientState  //客户端状态
     Gaming      //游戏中
 };
 
-struct CLIENT_INFO
-{
-    wstring username,room_name;
-    string ip;
-    char room_pos;
-    unsigned short port;
-    ClientState state=ClientState::Other;
-};
 
 struct ROOM_LIST_INFO
 {
     USER_BUF name;
     unsigned char num;
-
 };
 
 struct MATE_INFO
@@ -237,81 +224,57 @@ struct PLAYER_INFO
     char pos;
 };
 
+struct ENTER_ROOM_RE
+{
+    USER_BUF mate_name[3];
+    char player_pos;
+};
 
 class QTcpSocket;
-struct ROOM_INFO
-{
-    wstring mate_arr[3],name;
-    char num;
-    QTcpSocket * socket_arr[3];
-    ROOM_INFO()
-    {
-        for(int i=0;i<3;i++)
-        {
-            socket_arr[i]=nullptr;
-        }
-        num=0;
-    }
-    int AddPlayer( QTcpSocket * _socket,const PLAYER_INFO & info)
-    {
-        for(int i=0;i<3;i++)
-        {
-            if(socket_arr[i]==nullptr)
-            {
-                if(i==0)
-                {
-                    name=info.room_name.GetStr();
-                }
-                ++num;
-                mate_arr[i]=info.name.GetStr();
-                socket_arr[i]=_socket;
-                return i;
-            }
-        }
-        return -1;
-    }
-    void DelPlayer(const char pos)      //true
-    {
-       if(socket_arr[pos-1]==nullptr)
-           return;
-       socket_arr[pos-1]=nullptr;
-       mate_arr[pos-1].clear();
-       --num;
-    }
-    bool IsEmpty()
-    {
-        return num<=0;
-    }
 
+struct CLIENT_INFO
+{
+    wstring username,room_name;
+    string ip;
+    char room_pos;
+    unsigned short port;
+    ClientState state=ClientState::Other;
+    void UpdateClientInfo(const USER_BUF & name,const char player_nums)     //房间人数
+    {
+        room_name=name.GetStr();
+        room_pos=player_nums-1;
+    }
 };
+
 const uint MAX_BUF_SIZE=sizeof(ROOM_LIST_INFO)*3;
 
 
 
-struct DATA_BUF
-{
-    char buf[MAX_BUF_SIZE];
-    DATA_BUF()
-    {
-        memset(buf,0,MAX_BUF_SIZE);
-    }
-    template  <class T>
-    DATA_BUF(const T & u)
-    {
-        int i=0;
-        for(i=0;i<sizeof(u);i++)
-        {
-            buf[i]=(*((char *)&u+i));
-        }
-        memset(buf+i,0,MAX_BUF_SIZE-i);
-    }
-    void Clear()
-    {
-        memset(buf,0,sizeof(buf));
-    }
-};
 struct DATA_PACKAGE
 {
+
+    struct DATA_BUF
+    {
+        char buf[MAX_BUF_SIZE];
+        DATA_BUF()
+        {
+            memset(buf,0,MAX_BUF_SIZE);
+        }
+        template  <class T>
+        DATA_BUF(const T & u)
+        {
+            int i=0;
+            for(i=0;i<sizeof(u);i++)
+            {
+                buf[i]=(*((char *)&u+i));
+            }
+            memset(buf+i,0,MAX_BUF_SIZE-i);
+        }
+        void Clear()
+        {
+            memset(buf,0,sizeof(buf));
+        }
+    };
     MS_TYPE ms_type;
     DATA_BUF buf;
     template  <class T>
@@ -327,4 +290,3 @@ struct DATA_PACKAGE
     }
 
 };
-

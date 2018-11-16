@@ -3,6 +3,7 @@
 #include <QString>
 MySQL::MySQL()
 {
+    return;
     PRINT("连接数据库...")
     QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
     db.setHostName("localhost");

@@ -2,6 +2,7 @@
 #define CLIENTMANAGER_H
 
 #include <QObject>
+#include "Packdef.h"
 class QTcpSocket;
 class Data;
 class ClientManager : public QObject
@@ -12,7 +13,10 @@ public:
 private:
     QTcpSocket * const socket;
     Data & data;
+
 public slots:
     void readMessage();
 };
 #endif // CLIENTMANAGER_H
+
+

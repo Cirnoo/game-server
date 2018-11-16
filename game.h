@@ -3,7 +3,8 @@
 
 #include <QVector>
 #include "Packdef.h"
-#include <vector>
+#include <array>
+typedef  std::array<char,53> PokerGroup;
 class Game
 {
 public:
@@ -14,7 +15,7 @@ private:
     void ShufflePoker();
 private:
     Game();
-    QVector<char> all_poker;
+    PokerGroup all_poker;
     static Game* game; //hungry
 
 };

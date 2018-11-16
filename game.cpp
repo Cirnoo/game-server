@@ -9,19 +9,12 @@ Game &Game::GetInstance()
 
 PokerGroup Game::GetPokerGroup()
 {
-    //QVector<QVector<Poker>> ans(4);
-    PokerGroup group;
     ShufflePoker();
-    for(char i=0;i<54;i++)
-    {
-        group[i]=all_poker[i];
-    }
-    return group;
+    return all_poker;
 }
 
 void Game::InitPoker()
 {
-    all_poker.resize(54);
     for(char i=0;i<54;i++)
     {
         all_poker[i]=i;

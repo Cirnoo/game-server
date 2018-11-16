@@ -8,6 +8,7 @@
 #include "tcpnet.h"
 #include "Packdef.h"
 #include "mysql.h"
+#include "roominfo.h"
 class Game;
 class Data
 {
@@ -20,7 +21,6 @@ private:
 
     MySQL sql;
     void AddMS(MS_TYPE _type,std::function<bool (USER_INFO)> _cmd);
-    void SocketInit();
     bool Login(QTcpSocket * socket,  DATA_PACKAGE & pack);
     bool ChangePassword(QTcpSocket * socket);
     bool Register(QTcpSocket *socket, DATA_PACKAGE & pack);
@@ -31,11 +31,13 @@ private:
     bool EnterRoom(QTcpSocket *socket, DATA_PACKAGE & pack);
     bool OffLine(QTcpSocket *socket);
     bool GameStart(QTcpSocket * socket);
-    void UpdateRoomList(const ROOM_LIST_INFO & info);
-    void Broadcast(const DATA_PACKAGE &pack, const ClientState state);
+    bool SelectLandlord(QTcpSocket * socket,bool is_want);
+    void UpdateRoomList(const RoomInfo &info) const;
+    void Broadcast(const DATA_PACKAGE &pack, const ClientState state) const;
+    void RefreshRoomMateInfo(QTcpSocket * const socket);
     TCPNet tcp;
     Game & game;
-    std::unordered_map<wstring,ROOM_INFO> room_map;
+    std::unordered_map<wstring,RoomInfo> room_map;
     std::unordered_map<QTcpSocket *,CLIENT_INFO> player_map;
 };
 
