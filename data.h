@@ -35,6 +35,7 @@ private:
     void UpdateRoomList(const RoomInfo &info) const;
     void Broadcast(const DATA_PACKAGE &pack, const ClientState state) const;
     void RefreshRoomMateInfo(QTcpSocket * const socket);
+    void SendToRoomMate(QTcpSocket * socket,const DATA_PACKAGE & pack) const;
     TCPNet tcp;
     Game & game;
     std::unordered_map<wstring,RoomInfo> room_map;

@@ -11,7 +11,7 @@ RoomInfo::RoomInfo()
         socket_arr[i]=nullptr;
     }
     num=0;
-    landlord_flag.fill(0);
+    landlord_flag.fill(WAIT_SEL);
 }
 
 RoomInfo::~RoomInfo()
@@ -64,40 +64,46 @@ char RoomInfo::NextPlayerTurn()
 char RoomInfo::WantLandlord(const uchar num)
 {
     Q_ASSERT(game_state==GameState::SelectLandLord);
-    if(++landlord_flag[num]==2)
+    if(landlord_flag[num]==WANT)
     {
         landlord_pos=num;
-        return num;     //当前为地主
+        return landlord_pos;     //当前为地主
     }
-    if(count(landlord_flag.begin(),landlord_flag.end(),-1)==2)
+    if(count(landlord_flag.begin(),landlord_flag.end(),NOT_WANT)==2)        //其他两人都不抢
     {
         landlord_pos=num;
-        return num;
+        return landlord_pos;
     }
-    return WAIT_OTHERS;          //等待其他玩家继续抢地主
+    return WAIT_OTHERS_ROB;          //等待其他玩家继续抢地主
 }
 
 char RoomInfo::NotWantLandlord(const uchar num)
 {
     Q_ASSERT(game_state==GameState::SelectLandLord);
-    landlord_flag[num]=-1;
-    array<char,3> temp={0};       //-1 0 1 三种可能
+    landlord_flag[num]=NOT_WANT;
+    array<int,3> want_cnt;       //三种可能
+    want_cnt.fill(WAIT_SEL);
     for(auto i:landlord_flag)
     {
-        temp[i+1]++;
+        want_cnt[i]++;
     }
-    if(temp[0]==3)      //三人都不叫地主
+    if(want_cnt[NOT_WANT]==3)      //三人都不叫地主
     {
         return NONE_LANDLORD;
     }
-    if(temp[0]==2 && temp[2]==1)
+    if(want_cnt[NOT_WANT]==2 && want_cnt[WANT]==1)      //有一个人叫地主
     {
-        landlord_pos=*find(temp.begin(),temp.end(),1);
+        landlord_pos=*find(want_cnt.begin(),want_cnt.end(),WANT);
         return landlord_pos;
+    }
+    else if(want_cnt[WANT]==0)      //还没有人叫地主
+    {
+
+        return WAIT_OTHERS_CALL;
     }
     else
     {
-        return WAIT_OTHERS;
+        return WAIT_OTHERS_ROB;
     }
 }
 

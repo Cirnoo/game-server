@@ -224,10 +224,10 @@ bool Data::SelectLandlord(QTcpSocket *socket, bool is_want)
         //没人叫地主 游戏结束
         pack.ms_type=MS_TYPE::GAME_RESTRT;
     }
-    else if (flag==WAIT_OTHERS)
+    else if (flag==WAIT_OTHERS_ROB)
     {
         //等待别人叫地主
-        pack.ms_type=MS_TYPE::SELECT_LANDLORD;
+        pack.ms_type=MS_TYPE::SELECT_LANDLORD_CALL;
         pack.buf=cur_room.NextPlayerTurn();      //下一个玩家
     }
     else
@@ -289,6 +289,12 @@ void Data::RefreshRoomMateInfo(QTcpSocket * const socket)
             tcp.SendData(cur_room.socket_arr[i],pack);
         }
     }
+}
+
+void Data::SendToRoomMate(QTcpSocket * socket, const DATA_PACKAGE & pack) const
+{
+    auto & cur_player=player_map[socket];
+    const auto & cur_room=room_map[cur_player]
 }
 
 

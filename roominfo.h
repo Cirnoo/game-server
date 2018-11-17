@@ -5,21 +5,29 @@
 #include <array>
 #include <QtGlobal>
 #include <mutex>
-const int WAIT_OTHERS = -1;
-const int NONE_LANDLORD = -2;
-class QTcpSocket;
-class PLAYER_INFO;
+
+enum SelectRetrun:char
+{
+    WAIT_OTHERS_CALL=-3,WAIT_OTHERS_ROB=-2,NONE_LANDLORD=-1,
+};
+enum IsWantLandlord:char
+{
+     WAIT_SEL=0,NOT_WANT=1,WANT=2
+};
 enum class GameState
 {
     Wait,GetCards,SelectLandLord,Gaming,Over
 };
+
+class QTcpSocket;
+class PLAYER_INFO;
 class RoomInfo
 {
 
 public:
     std::wstring mate_arr[3],name;
     char num=0;       //房间有几人
-    std::array<char,3> landlord_flag;  //三人叫地主标记
+    std::array<IsWantLandlord,3> landlord_flag;  //三人叫地主标记
     char turn_flag=0;  //当前行动玩家 0代表第一个
     char landlord_pos=0;
     std::array<QTcpSocket *,3> socket_arr;
@@ -34,7 +42,6 @@ public:
     char NextPlayerTurn();
     bool IsEmpty();
     char GetCurActPlayer();
-
 private:
 };
 

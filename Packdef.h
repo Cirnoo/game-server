@@ -176,8 +176,16 @@ struct CardArray		//需要打出的牌
         
 	}
 };
-
-
+enum PlayerText
+{
+	CALL_LANDLORD,NOT_CALL,ROB_LANDLORD,NOT_ROB,CARD_PASS
+};
+struct GAME_PROCESS
+{
+	char player_pos;
+	PlayerText text;
+	CardArray card_arr;
+};
 
 struct USER_INFO
 {
